@@ -23,9 +23,6 @@ exports.construct = ({ di }) ->
     if !file.execute?
       throw new Error("Failed to register '#{id}'. The file '#{filename}' does not have an 'execute' property.")
       
-    if !file.dependsOn?
-      throw new Error("Failed to register '#{id}'. The file '#{filename}' does not have a 'dependsOn' property.")
-
     di.registerModule(id, file.dependsOn, file.execute)
 
   di2.run = (modules, callback) ->

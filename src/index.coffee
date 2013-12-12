@@ -1,7 +1,7 @@
 exports.construct = ->
   augmentors = [
-    require './augment'
     require './autoDeps'
+    require './augment'
   ]
   
   diCore = require('./core').construct({ })
