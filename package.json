@@ -1,0 +1,24 @@
+{
+  "name": "dinode",
+  "version": "0.1.0",
+  "description": "Dependency Injection framework for Node.js (and JavaScript in general)",
+  "author": "Jakob Mattsson <jakob.mattsson@gmail.com> (jakobmattsson.se)",
+  "main": "./lib/index.js",
+  "engines": {
+    "npm": ">= 1.3 < 2",
+    "node": ">= 0.10.13 < 0.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/jakobmattsson/dinode"
+  },
+  "scripts": {
+    "prestart": "coffee -co lib src",
+    "pretest": "coffee -co lib src",
+    "prepublish": "coffee -co lib src"
+  },
+  "dependencies": { },
+  "devDependencies": {
+    "coffee-script": "^1.4.0"
+  }
+}

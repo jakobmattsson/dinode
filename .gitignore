@@ -1,0 +1,6 @@
+lib
+
+!.travis.yml
+!.gitignore
+!.npmignore
+!.bowerrc
