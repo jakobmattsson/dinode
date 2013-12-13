@@ -1,6 +1,6 @@
 {
   "name": "dinode",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dependency Injection framework for Node.js (and JavaScript in general)",
   "author": "Jakob Mattsson <jakob.mattsson@gmail.com> (jakobmattsson.se)",
   "main": "./lib/index.js",
@@ -17,7 +17,7 @@
     "pretest": "coffee -co lib src",
     "prepublish": "coffee -co lib src"
   },
-  "dependencies": { },
+  "dependencies": {},
   "devDependencies": {
     "coffee-script": "^1.4.0"
   }
