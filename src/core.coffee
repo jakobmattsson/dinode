@@ -23,7 +23,7 @@ exports.construct = ({ lazy, onError }) ->
 
   diModules = {}
   waiting = []
-  unresolvedModules = {}
+  allRegistered = {}
 
   loadModules = (modules, callback) ->
     missing = {}
@@ -60,11 +60,11 @@ exports.construct = ({ lazy, onError }) ->
     resolved.forEach (m) ->
       m.callback.call(null, m.modules)
 
-
+  listModules: -> allRegistered
 
   registerModule: (id, modules, callback) ->
+    allRegistered[id] = { dependencies: modules, resolved: false }
     # om den redan finns registrerad så ska ett fel genereras
-    unresolvedModules[id] = true
     setImm ->
       loadModules modules, (loadedModules) ->
         # console.log "all loaded for #{id}: [#{modules.join(', ')}]"
@@ -81,6 +81,6 @@ exports.construct = ({ lazy, onError }) ->
           return if !id?
           return onError(new Error("Module '#{id}' defined twice")) if diModules[id]
           return onError(new Error("Module '#{id}' failed during registration: " + (err?.message || 'unknown error'))) if err?
+          allRegistered[id].resolved = true
           diModules[id] = { value: value }
-          delete unresolvedModules[id]
           setImm -> onRegister(id, value)
