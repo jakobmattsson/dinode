@@ -75,8 +75,11 @@ exports.construct = ({ lazy, onError }) ->
   listModules: -> allRegistered
 
   registerModule: (id, modules, callback) ->
-    allRegistered[id] = { dependencies: modules, resolved: false }
-    # om den redan finns registrerad så ska ett fel genereras
+
+    # if the module is anonymous, there's no need to register it
+    if id?
+      allRegistered[id] = { dependencies: modules, resolved: false }
+
     setImm ->
       checkAllRegistered()
 
