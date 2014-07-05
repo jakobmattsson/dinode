@@ -30,4 +30,8 @@ exports.construct = (di, params) ->
   di2.run = (modules, callback) ->
     di.registerModule(null, modules, callback)
 
+  di2.registerProperty = (property, input) ->
+    di.registerModule property, [input], (deps) ->
+      deps[input][property]
+
   di2
