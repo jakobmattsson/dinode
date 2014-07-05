@@ -1,6 +1,8 @@
 util = require './util'
 
-exports.construct = ({ di }) ->
+exports.construct = (di, params) ->
+
+  req = params.require || require
 
   di2 = util.clone(di)
 
@@ -11,14 +13,14 @@ exports.construct = ({ di }) ->
   di2.registerRequire = (id, value) ->
     value = id if !value?
     di.registerModule id, [], ({}, callback) ->
-      callback(null, require(value))
+      callback(null, req(value))
 
   di2.registerAlias = (id, aliased) ->
     di.registerModule id, [aliased], (obj, callback) ->
       callback(null, obj[aliased])
 
   di2.registerFile = (id, filename) ->
-    file = require(filename)
+    file = req(filename)
 
     if !file.execute?
       throw new Error("Failed to register '#{id}'. The file '#{filename}' does not have an 'execute' property.")

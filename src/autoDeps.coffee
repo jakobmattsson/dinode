@@ -43,7 +43,7 @@ figureOutDependencies = (func) ->
 
 
 
-exports.construct = ({ di }) ->
+exports.construct = (di, params) ->
   di2 = util.clone(di)
   
   di2.registerModule = (id, modules, callback) ->

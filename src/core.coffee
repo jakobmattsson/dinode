@@ -8,7 +8,7 @@ setImm = (f) -> setTimeout(f, 1)
 
 
 
-
+{unique, removeAll, flatten, once} = require './util'
 
 
 
@@ -17,8 +17,9 @@ setImm = (f) -> setTimeout(f, 1)
 exports.construct = ({ lazy, onError }) ->
 
   onError ?= (err) ->
-    console.log "do something defaulty"
-    console.log err.message
+    throw err
+    #console.log "do something defaulty"
+    #console.log err.message
 
 
   diModules = {}
@@ -55,10 +56,21 @@ exports.construct = ({ lazy, onError }) ->
 
     waiting = waiting.filter (x) -> Object.keys(x.missingModules).length > 0
 
-    # console.log "missing", Array::concat.apply([], waiting.map((x) -> Object.keys(x.missingModules)))
 
     resolved.forEach (m) ->
       m.callback.call(null, m.modules)
+
+  checkAllRegistered = once ->
+    return if lazy
+
+    allModules = Object.keys(allRegistered)
+    allDeps = flatten allModules.map (m) -> allRegistered[m].dependencies
+    missing = removeAll(unique(allDeps), allModules)
+
+    if missing.length > 0
+      onError(new Error("The following dependencies was never defined: " + missing.join(', ')))
+
+
 
   listModules: -> allRegistered
 
@@ -66,8 +78,9 @@ exports.construct = ({ lazy, onError }) ->
     allRegistered[id] = { dependencies: modules, resolved: false }
     # om den redan finns registrerad så ska ett fel genereras
     setImm ->
+      checkAllRegistered()
+
       loadModules modules, (loadedModules) ->
-        # console.log "all loaded for #{id}: [#{modules.join(', ')}]"
 
         actualCallback = null
 
