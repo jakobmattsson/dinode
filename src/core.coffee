@@ -1,26 +1,9 @@
-# hur förhindrar man dödlägen?
-# vissa moduler kanske inte är färdigladdade, trots att det inte finns några kvar att registrera
-# skulle kunna skicka in en flagga som styr huruvida man tillåter att det händer eller ej
-
-# verkar inte faila rätt när man definierar två moduler med samma namn
-
-setImm = (f) -> setTimeout(f, 1)
-
-
-
-{unique, removeAll, flatten, once} = require './util'
-
-
-
-
+{unique, removeAll, flatten, once, setImm} = require './util'
 
 exports.construct = ({ lazy, onError }) ->
 
-  onError ?= (err) ->
-    throw err
-    #console.log "do something defaulty"
-    #console.log err.message
-
+  lazy ?= false
+  onError ?= (err) -> throw err
 
   diModules = {}
   waiting = []
@@ -55,7 +38,6 @@ exports.construct = ({ lazy, onError }) ->
     resolved = waiting.filter (x) -> Object.keys(x.missingModules).length == 0
 
     waiting = waiting.filter (x) -> Object.keys(x.missingModules).length > 0
-
 
     resolved.forEach (m) ->
       m.callback.call(null, m.modules)

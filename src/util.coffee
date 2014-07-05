@@ -31,3 +31,5 @@ exports.unique = (arr) ->
   uniqueRest = exports.unique(rest)
 
   [head].concat(uniqueRest.filter((x) -> x != head))
+
+exports.setImm = (f) -> setTimeout(f, 1)
