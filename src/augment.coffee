@@ -10,6 +10,10 @@ exports.construct = (di, params) ->
     di.registerModule id, [], ({}, callback) ->
       callback(null, value)
 
+  di2.registerVars = (objs) ->
+    Object.keys(objs).forEach (name) ->
+      di2.registerVar(name, objs[name])
+
   di2.registerRequire = (id, value) ->
     value = id if !value?
     di.registerModule id, [], ({}, callback) ->
@@ -33,5 +37,9 @@ exports.construct = (di, params) ->
   di2.registerProperty = (property, input) ->
     di.registerModule property, [input], (deps) ->
       deps[input][property]
+
+  di2.registerProperties = (properties, input) ->
+    properties.forEach (property) ->
+      di2.registerProperty(property, input)
 
   di2
