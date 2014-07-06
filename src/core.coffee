@@ -9,6 +9,16 @@ exports.construct = ({ lazy, onError }) ->
   waiting = []
   allRegistered = {}
 
+
+
+  beginResolving = (name) ->
+    resolver = allRegistered[name]?.resolveMe
+    if resolver
+      allRegistered[name].resolveMe = null
+      resolver()
+
+
+
   loadModules = (modules, callback) ->
     missing = {}
     resolved = {}
@@ -18,6 +28,7 @@ exports.construct = ({ lazy, onError }) ->
         resolved[m] = diModules[m].value
       else
         missing[m] = true
+        beginResolving(m)
 
     if Object.keys(missing).length == 0
       setImm -> callback(resolved)
@@ -27,6 +38,7 @@ exports.construct = ({ lazy, onError }) ->
         modules: resolved
         callback: callback
       })
+
 
 
   onRegister = (id, value) ->
@@ -42,15 +54,41 @@ exports.construct = ({ lazy, onError }) ->
     resolved.forEach (m) ->
       m.callback.call(null, m.modules)
 
-  checkAllRegistered = once ->
-    return if lazy
 
-    allModules = Object.keys(allRegistered)
-    allDeps = flatten allModules.map (m) -> allRegistered[m].dependencies
-    missing = removeAll(unique(allDeps), allModules)
 
-    if missing.length > 0
-      onError(new Error("The following dependencies was never defined: " + missing.join(', ')))
+  checkIfAllDepsDefined = (modules) ->
+    missing = {}
+    needed = {}
+    traversing = []
+
+    addToTraversing = (list) ->
+      list.forEach (e) ->
+        traversing.push(e) if !needed[e]
+
+    addToTraversing(modules)
+
+    while traversing.length > 0
+      name = traversing.pop()
+      needed[name] = true
+      e = allRegistered[name]
+
+      if e
+        addToTraversing(e.dependencies)
+      else
+        missing[name] = true
+
+    missingList = Object.keys(missing)
+
+    if missingList.length > 0
+      onError(new Error("The following dependencies was never defined: " + missingList.join(', ')))
+
+
+
+  asyncifyCallback = (callback) ->
+    if callback.length < 2
+      (required, cb) -> cb(null, callback(required))
+    else
+      callback
 
 
 
@@ -58,23 +96,9 @@ exports.construct = ({ lazy, onError }) ->
 
   registerModule: (id, modules, callback) ->
 
-    # if the module is anonymous, there's no need to register it
-    if id?
-      allRegistered[id] = { dependencies: modules, resolved: false }
-
-    setImm ->
-      checkAllRegistered()
-
+    resolveMe = ->
       loadModules modules, (loadedModules) ->
-
-        actualCallback = null
-
-        if callback.length < 2
-          actualCallback = (required, cb) ->
-            cb(null, callback(required))
-        else
-          actualCallback = callback
-
+        actualCallback = asyncifyCallback(callback)
         actualCallback loadedModules, (err, value) ->
           return if !id?
           return onError(new Error("Module '#{id}' defined twice")) if diModules[id]
@@ -82,3 +106,17 @@ exports.construct = ({ lazy, onError }) ->
           allRegistered[id].resolved = true
           diModules[id] = { value: value }
           setImm -> onRegister(id, value)
+
+    # only register modules if they're named
+    if id?
+      allRegistered[id] = {
+        dependencies: modules
+        resolved: false
+        resolveMe: resolveMe
+      }
+
+    # trigger resolution if this is an anonymous module
+    if !id?
+      setImm ->
+        checkIfAllDepsDefined(modules) if !lazy
+        resolveMe()
