@@ -13,6 +13,18 @@ describe 'dinode', ->
       expect(a).to.eql { x: 5 }
       done()
 
+  it 'can pass null instead of dependencies and it will be interpreted as no dependencies', (done) ->
+    @di.registerModule 'a', null, () -> { x: 5 }
+    @di.registerModule null, ['a'], ({ a }) ->
+      expect(a).to.eql { x: 5 }
+      done()
+
+  it 'can skip dependencies and it will be interpreted as no dependencies', (done) ->
+    @di.registerModule 'a', () -> { x: 6 }
+    @di.registerModule null, ['a'], ({ a }) ->
+      expect(a).to.eql { x: 6 }
+      done()
+
   it 'can define modules after they are depended on', (done) ->
     @di.registerModule null, ['a'], ({ a }) ->
       expect(a).to.eql { x: 5 }
@@ -51,6 +63,26 @@ describe 'dinode', ->
       expect(a).to.eql { x: 5 }
     @di.registerModule 'a', [], (deps, callback) ->
       callback(new Error("foobar"))
+
+  it 'catches errors raised during anonymous module resolutions', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Anonymous module failed during registration: what"
+        done()
+    })
+    @di.registerModule null, [], ->
+      throw new Error("what")
+
+  it 'catches errors throw as objects that are not Errors', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Anonymous module failed during registration: 42"
+        done()
+    })
+    @di.registerModule null, [], ->
+      throw 42
 
   it 'calls onError if a module name is defined twice', (done) ->
     @di = dinode.construct({
@@ -99,19 +131,6 @@ describe 'dinode', ->
     })
     @di.registerModule null, ['not-defined'], ->
     
-  it 'expects all modules to be defined in the same tick', (done) ->
-    @di = dinode.construct({
-      onError: (err) ->
-        expect(err).to.be.instanceof Error
-        expect(err.message).to.eql "The following dependencies was never defined: definedLater"
-        done()
-    })
-    @di.registerModule null, ['definedLater'], ({ definedLater }) ->
-      expect(definedLater).to.eql { x: 7 }
-    setTimeout =>
-      @di.registerModule 'definedLater', [], -> { x: 7 }
-    , 1
-
   it 'waits for additional module definitions in later ticks if "lazy" has been set to true', (done) ->
     @di = dinode.construct({
       lazy: true
@@ -225,3 +244,38 @@ describe 'dinode', ->
         what: 'foo'
     })
     @di.registerFile('modName', 'myFile')
+
+  it 'detects circular dependencies', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Circular dependency found: c <- b <- a <- c"
+        done()
+    })
+    @di.registerModule 'a', ['c'], -> 'A'
+    @di.registerModule 'b', ['a', 'e'], -> 'B'
+    @di.registerModule 'c', ['b'], -> 'C'
+    @di.registerModule 'd', ['a'], -> 'D'
+    @di.registerModule 'e', [], -> 'E'
+    @di.run ['a'], ->
+
+  it 'raises an error if a module depends on itself', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Circular dependency found: a <- a"
+        done()
+    })
+    @di.registerModule 'a', ['a'], () -> { x: 5 }
+    @di.registerModule null, ['a'], ->
+
+  it 'raises an error if the dependency tree is too deep (to avoid getting stuck in buggy loops)', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Dependency tree too deep (more than 1000 ancestors)"
+        done()
+    })
+    [0..1010].forEach (e) =>
+      @di.registerModule e.toString(), [(e+1).toString()], ->
+    @di.registerModule null, ['0'], ->

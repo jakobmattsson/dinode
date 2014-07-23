@@ -1,119 +1,112 @@
-{unique, removeAll, flatten, once, setImm, toObject, asyncify} = require './util'
+{once, setImm, toObject, asyncify, getGUID} = require './util'
+{createGraph} = require './graph'
+{createSet} = require './set'
 
 exports.construct = ({ lazy, onError }) ->
 
-  allRegistered = {}
-  invertedIndex = {}
+  #
+  # PRIVATE STATE
+  #
+
+  onErr = once(onError)
+  moduleGraph = createGraph()
 
 
-  isAllDepsResolved = (module) ->
-    module? && Object.keys(module.unresolvedDeps).length == 0
 
-  getResolvedDependencies = (module) ->
-    toObject(module.directDeps.map (name) -> [name, allRegistered[name].value])
+  #
+  # PRIVATE HELPERS
+  #
 
   newModuleRegistered = (name, dependencies, callback) ->
+    newModule = makeNewModuleNode(name, dependencies, callback)
+    moduleGraph.addNode(newModule.name, newModule, dependencies)
+    setImm(-> raiseErrorForUndefinedDependencies(newModule)) if !lazy
+    setModuleAndAncestorsToEager(newModule.name) if shouldModuleBeEager(newModule)
 
-    if name? && allRegistered[name]?
-      onError(new Error("Module '#{name}' defined twice"))
-      return
+  makeNewModuleNode = (name, dependencies, callback) ->
+    externalName: name
+    name: name || getGUID()
+    unresolvedDeps: createSet().addAll(dependencies)
+    definedAsEager: !name?
+    eager: false
+    resolver: once(asyncify(callback))
+    resolved: false # TODO:::: three states, not two
 
-    # Create the new module
-    newModule = {
-      name: name
-      unresolvedDeps: {}
-      directDeps: dependencies
-      resolveEagerly: !name?
-      resolver: callback
-      resolved: false
-    }
+  raiseErrorForUndefinedDependencies = (module) ->
+    undefinedDeps = undefinedDependencies(module)
+    if undefinedDeps.length > 0
+      onErr(new Error("The following dependencies was never defined: " + undefinedDeps.join(', ')))
 
-    if !lazy
-      setTimeout ->
-        missing = Object.keys(newModule.unresolvedDeps).filter (name) -> !allRegistered[name]?
-        if missing.length > 0
-          return onError(new Error("The following dependencies was never defined: #{missing.join(', ')}"))
-      , 1
+  undefinedDependencies = (module) ->
+    module.unresolvedDeps.toList().filter (name) -> !moduleGraph.hasNode(name)
 
+  shouldModuleBeEager = (module) ->
+    thisShouldBeEager = module.definedAsEager
+    anyChildIsEager = moduleGraph.anyChild(module.name, ((childName, childData) -> childData.eager))
+    thisShouldBeEager || anyChildIsEager
 
-    # Add the new module to the directionary of modules
-    allRegistered[name] = newModule
+  setModuleAndAncestorsToEager = (moduleName) ->
+    node = moduleGraph.getNodeData(moduleName)
+    return if !node? || node.eager
+    setModuleToEager(node)
+    moduleGraph.getParents(moduleName).forEach(setModuleAndAncestorsToEager)
 
-    # Add each direct dependency as an unresolved dependency in the module
-    dependencies.forEach (dependency) ->
-      newModule.unresolvedDeps[dependency] = allRegistered[dependency]
+  setModuleToEager = (module) ->
+    module.eager = true
+    attemptResolve(module)
 
-    # For each dependency, note the relation in the inverted index
-    dependencies.forEach (dependency) ->
-      invertedIndex[dependency] ?= []
-      invertedIndex[dependency].push(newModule)
+  areAllDepsResolved = (module) ->
+    module.unresolvedDeps.isEmpty()
 
-    # For every module already depending on this new module,
-    # insert the reference to the new module
-    invertedIndex[name] ?= []
-    invertedIndex[name].forEach (mod) ->
-      mod.unresolvedDeps[newModule.name] = newModule
+  attemptResolve = (module) ->
+    if module.eager && areAllDepsResolved(module)
+      resolveModule(module)
 
-    # For every module already depending on this new module,
-    # copy its dependencies to the unresolved of the dependant
-    invertedIndex[name].forEach (dependantOnTheNew) ->
-      newModule.directDeps.forEach (depName) ->
-        if !allRegistered[depName].resolved
-          dependantOnTheNew.unresolvedDeps[depName] = allRegistered[depName]
+  getResolvedDependencies = (module) ->
+    parents = moduleGraph.getParents(module.name)
+    toObject(parents.map (name) -> [name, moduleGraph.getNodeData(name).value])
 
-    # Om den aktuella modulen ska resolva eagerly, då ska också alla dess icke-resolvade dependencies också göra det.
-    anyChildIsEager = invertedIndex[name].some (dependantOnTheNew) -> dependantOnTheNew.resolveEagerly
-    if newModule.resolveEagerly || anyChildIsEager
-      newModule.resolveEagerly = true
-      for key, value of newModule.unresolvedDeps
-        if value?
-          value.resolveEagerly = true
-          if isAllDepsResolved(value)
-            onAllDepsResolved(value)
+  resolveModule = (module) ->
+    module.resolver getResolvedDependencies(module), (err, value) ->
+      if err?
+        onModuleResolvedErroneously(module, err)
+      else
+        onModuleResolvedSuccessfully(module, value)
 
-    # If the module is already resolved (it has no deps) --- OR ALL DEPS ARE ALREADY RESOLVED? (how do we catch this?)
-    if isAllDepsResolved(newModule)
-      onAllDepsResolved(newModule)
+  markDependencyAsResolved = (module, dependencyName) ->
+    module.unresolvedDeps.remove(dependencyName)
+    attemptResolve(module)
 
+  onModuleResolvedErroneously = (module, err) ->
+    message = err.message || err.toString()
+    if module.externalName?
+      onErr(new Error("Module '#{module.externalName}' failed during registration: " + message))
+    else
+      onErr(new Error("Anonymous module failed during registration: " + message))
 
-
-  resolveModule = (mod) ->
-    # Prevent the module from resolving multiple times
-    return if !mod.resolver?
-    resolver = mod.resolver
-    mod.resolver = null
-
-    # Now resolve it
-    resolver getResolvedDependencies(mod), (err, value) ->
-      if err
-        if mod.name?
-          onError(new Error("Module '#{mod.name}' failed during registration: " + (err?.message || 'unknown error'))) if err?
-        else
-          onError(new Error("Anonymous module failed during registration: " + (err?.message || 'unknown error'))) if err?
-        return
-
-      if mod.name?
-        moduleResolved(mod, value)
-
-
-  onAllDepsResolved = (mod) ->
-    resolveModule(mod) if mod.resolveEagerly
+  onModuleResolvedSuccessfully = (module, value) ->
+    module.resolved = true
+    module.value = value
+    moduleGraph.getChildren(module.name).forEach (childName) ->
+      childModule = moduleGraph.getNodeData(childName)
+      markDependencyAsResolved(childModule, module.name)
 
 
 
-  moduleResolved = (resolvedModule, value) ->
-    resolvedModule.resolved = true
-    resolvedModule.value = value
-    invertedIndex[resolvedModule.name].forEach (module) ->
-      delete module.unresolvedDeps[resolvedModule.name]
-      if isAllDepsResolved(module)
-        onAllDepsResolved(module)
-
-
-
-
-
-
+  #
+  # PUBLIC INTERFACE
+  #
 
   registerModule: (id, modules, callback) ->
-    newModuleRegistered(id, modules || [], asyncify(callback))
+    try
+      newModuleRegistered(id, modules, callback)
+    catch ex
+      onErr(ex)
+
+  listModules: ->
+    throw new Error("not implemented")
+    # TODO
+    # - created (notResolved/resolutionStarted/resolved)
+    # - only named
+    # - also show all parents and children of each module
+    # - askedToResolve (or something like it.. the external version of "eager")

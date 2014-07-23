@@ -11,27 +11,6 @@ exports.once = (f) ->
     ran = true
     f(args...)
 
-exports.flatten = (arr) ->
-  arrOfArrs = arr.map (e) ->
-    if Array.isArray(e)
-      exports.flatten(e)
-    else
-      e
-
-  Array::concat.apply([], arrOfArrs)
-
-exports.removeAll = (source, remove) ->
-  source.filter (x) -> x not in remove
-
-exports.unique = (arr) ->
-  return [] if arr.length == 0
-
-  head = arr[0]
-  rest = arr.slice(1)
-  uniqueRest = exports.unique(rest)
-
-  [head].concat(uniqueRest.filter((x) -> x != head))
-
 exports.setImm = (f) -> setTimeout(f, 1)
 
 exports.toObject = (pairs) ->
@@ -39,6 +18,9 @@ exports.toObject = (pairs) ->
   pairs.forEach ([key, value]) ->
     obj[key] = value
   obj
+
+exports.contains = (list, element) ->
+  list.indexOf(element) != -1
 
 exports.asyncify = (callback) ->
   if callback.length < 2
@@ -54,3 +36,9 @@ exports.asyncify = (callback) ->
       cb(null, res)
   else
     callback
+
+exports.getGUID = do ->
+  v = 0
+  ->
+    v++
+    "____leaf#{v}"
