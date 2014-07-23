@@ -2,9 +2,6 @@
 
 exports.construct = ({ lazy, onError }) ->
 
-  lazy ?= false
-  onError ?= (err) -> throw err
-
   diModules = {}
   waiting = []
   allRegistered = {}
@@ -86,7 +83,16 @@ exports.construct = ({ lazy, onError }) ->
 
   asyncifyCallback = (callback) ->
     if callback.length < 2
-      (required, cb) -> cb(null, callback(required))
+      (required, cb) ->
+        res = null
+
+        try
+          res = callback(required)
+        catch ex
+          cb(ex)
+          return
+
+        cb(null, res)
     else
       callback
 
@@ -101,7 +107,6 @@ exports.construct = ({ lazy, onError }) ->
         actualCallback = asyncifyCallback(callback)
         actualCallback loadedModules, (err, value) ->
           return if !id?
-          return onError(new Error("Module '#{id}' defined twice")) if diModules[id]
           return onError(new Error("Module '#{id}' failed during registration: " + (err?.message || 'unknown error'))) if err?
           allRegistered[id].resolved = true
           diModules[id] = { value: value }
@@ -109,11 +114,16 @@ exports.construct = ({ lazy, onError }) ->
 
     # only register modules if they're named
     if id?
+      if allRegistered[id]?
+        onError(new Error("Module '#{id}' defined twice"))
+        return
+
       allRegistered[id] = {
         dependencies: modules
         resolved: false
         resolveMe: resolveMe
       }
+      resolveMe() if lazy
 
     # trigger resolution if this is an anonymous module
     if !id?
