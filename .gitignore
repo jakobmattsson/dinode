@@ -1,9 +1,5 @@
 lib
 lib-cov
 node_modules
-npm-debug.log
-
-!.travis.yml
-!.gitignore
-!.npmignore
-!.bowerrc
+*.log
+*.sublime-workspace
