@@ -3,3 +3,4 @@ lib-cov
 node_modules
 *.log
 *.sublime-workspace
+.cov

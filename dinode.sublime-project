@@ -9,8 +9,7 @@
       ".git",
       "node_modules",
       ".cov",
-      "lib",
-      ".mongodump"
+      "lib"
     ]
   }]
 }
