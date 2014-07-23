@@ -33,3 +33,24 @@ exports.unique = (arr) ->
   [head].concat(uniqueRest.filter((x) -> x != head))
 
 exports.setImm = (f) -> setTimeout(f, 1)
+
+exports.toObject = (pairs) ->
+  obj = {}
+  pairs.forEach ([key, value]) ->
+    obj[key] = value
+  obj
+
+exports.asyncify = (callback) ->
+  if callback.length < 2
+    (required, cb) ->
+      res = null
+
+      try
+        res = callback(required)
+      catch ex
+        cb(ex)
+        return
+
+      cb(null, res)
+  else
+    callback

@@ -1,132 +1,119 @@
-{unique, removeAll, flatten, once, setImm} = require './util'
+{unique, removeAll, flatten, once, setImm, toObject, asyncify} = require './util'
 
 exports.construct = ({ lazy, onError }) ->
 
-  diModules = {}
-  waiting = []
   allRegistered = {}
+  invertedIndex = {}
+
+
+  isAllDepsResolved = (module) ->
+    module? && Object.keys(module.unresolvedDeps).length == 0
+
+  getResolvedDependencies = (module) ->
+    toObject(module.directDeps.map (name) -> [name, allRegistered[name].value])
+
+  newModuleRegistered = (name, dependencies, callback) ->
+
+    if name? && allRegistered[name]?
+      onError(new Error("Module '#{name}' defined twice"))
+      return
+
+    # Create the new module
+    newModule = {
+      name: name
+      unresolvedDeps: {}
+      directDeps: dependencies
+      resolveEagerly: !name?
+      resolver: callback
+      resolved: false
+    }
+
+    if !lazy
+      setTimeout ->
+        missing = Object.keys(newModule.unresolvedDeps).filter (name) -> !allRegistered[name]?
+        if missing.length > 0
+          return onError(new Error("The following dependencies was never defined: #{missing.join(', ')}"))
+      , 1
+
+
+    # Add the new module to the directionary of modules
+    allRegistered[name] = newModule
+
+    # Add each direct dependency as an unresolved dependency in the module
+    dependencies.forEach (dependency) ->
+      newModule.unresolvedDeps[dependency] = allRegistered[dependency]
+
+    # For each dependency, note the relation in the inverted index
+    dependencies.forEach (dependency) ->
+      invertedIndex[dependency] ?= []
+      invertedIndex[dependency].push(newModule)
+
+    # For every module already depending on this new module,
+    # insert the reference to the new module
+    invertedIndex[name] ?= []
+    invertedIndex[name].forEach (mod) ->
+      mod.unresolvedDeps[newModule.name] = newModule
+
+    # For every module already depending on this new module,
+    # copy its dependencies to the unresolved of the dependant
+    invertedIndex[name].forEach (dependantOnTheNew) ->
+      newModule.directDeps.forEach (depName) ->
+        if !allRegistered[depName].resolved
+          dependantOnTheNew.unresolvedDeps[depName] = allRegistered[depName]
+
+    # Om den aktuella modulen ska resolva eagerly, då ska också alla dess icke-resolvade dependencies också göra det.
+    anyChildIsEager = invertedIndex[name].some (dependantOnTheNew) -> dependantOnTheNew.resolveEagerly
+    if newModule.resolveEagerly || anyChildIsEager
+      newModule.resolveEagerly = true
+      for key, value of newModule.unresolvedDeps
+        if value?
+          value.resolveEagerly = true
+          if isAllDepsResolved(value)
+            onAllDepsResolved(value)
+
+    # If the module is already resolved (it has no deps) --- OR ALL DEPS ARE ALREADY RESOLVED? (how do we catch this?)
+    if isAllDepsResolved(newModule)
+      onAllDepsResolved(newModule)
 
 
 
-  beginResolving = (name) ->
-    resolver = allRegistered[name]?.resolveMe
-    if resolver
-      allRegistered[name].resolveMe = null
-      resolver()
+  resolveModule = (mod) ->
+    # Prevent the module from resolving multiple times
+    return if !mod.resolver?
+    resolver = mod.resolver
+    mod.resolver = null
 
-
-
-  loadModules = (modules, callback) ->
-    missing = {}
-    resolved = {}
-  
-    modules.forEach (m) ->
-      if diModules[m]?
-        resolved[m] = diModules[m].value
-      else
-        missing[m] = true
-        beginResolving(m)
-
-    if Object.keys(missing).length == 0
-      setImm -> callback(resolved)
-    else
-      waiting.push({
-        missingModules: missing
-        modules: resolved
-        callback: callback
-      })
-
-
-
-  onRegister = (id, value) ->
-    waiting.forEach (w) ->
-      if w.missingModules[id]
-        w.modules[id] = value
-        delete w.missingModules[id]
-  
-    resolved = waiting.filter (x) -> Object.keys(x.missingModules).length == 0
-
-    waiting = waiting.filter (x) -> Object.keys(x.missingModules).length > 0
-
-    resolved.forEach (m) ->
-      m.callback.call(null, m.modules)
-
-
-
-  checkIfAllDepsDefined = (modules) ->
-    missing = {}
-    needed = {}
-    traversing = []
-
-    addToTraversing = (list) ->
-      list.forEach (e) ->
-        traversing.push(e) if !needed[e]
-
-    addToTraversing(modules)
-
-    while traversing.length > 0
-      name = traversing.pop()
-      needed[name] = true
-      e = allRegistered[name]
-
-      if e
-        addToTraversing(e.dependencies)
-      else
-        missing[name] = true
-
-    missingList = Object.keys(missing)
-
-    if missingList.length > 0
-      onError(new Error("The following dependencies was never defined: " + missingList.join(', ')))
-
-
-
-  asyncifyCallback = (callback) ->
-    if callback.length < 2
-      (required, cb) ->
-        res = null
-
-        try
-          res = callback(required)
-        catch ex
-          cb(ex)
-          return
-
-        cb(null, res)
-    else
-      callback
-
-
-
-  listModules: -> allRegistered
-
-  registerModule: (id, modules, callback) ->
-
-    resolveMe = ->
-      loadModules modules, (loadedModules) ->
-        actualCallback = asyncifyCallback(callback)
-        actualCallback loadedModules, (err, value) ->
-          return if !id?
-          return onError(new Error("Module '#{id}' failed during registration: " + (err?.message || 'unknown error'))) if err?
-          allRegistered[id].resolved = true
-          diModules[id] = { value: value }
-          setImm -> onRegister(id, value)
-
-    # only register modules if they're named
-    if id?
-      if allRegistered[id]?
-        onError(new Error("Module '#{id}' defined twice"))
+    # Now resolve it
+    resolver getResolvedDependencies(mod), (err, value) ->
+      if err
+        if mod.name?
+          onError(new Error("Module '#{mod.name}' failed during registration: " + (err?.message || 'unknown error'))) if err?
+        else
+          onError(new Error("Anonymous module failed during registration: " + (err?.message || 'unknown error'))) if err?
         return
 
-      allRegistered[id] = {
-        dependencies: modules
-        resolved: false
-        resolveMe: resolveMe
-      }
-      resolveMe() if lazy
+      if mod.name?
+        moduleResolved(mod, value)
 
-    # trigger resolution if this is an anonymous module
-    if !id?
-      setImm ->
-        checkIfAllDepsDefined(modules) if !lazy
-        resolveMe()
+
+  onAllDepsResolved = (mod) ->
+    resolveModule(mod) if mod.resolveEagerly
+
+
+
+  moduleResolved = (resolvedModule, value) ->
+    resolvedModule.resolved = true
+    resolvedModule.value = value
+    invertedIndex[resolvedModule.name].forEach (module) ->
+      delete module.unresolvedDeps[resolvedModule.name]
+      if isAllDepsResolved(module)
+        onAllDepsResolved(module)
+
+
+
+
+
+
+
+  registerModule: (id, modules, callback) ->
+    newModuleRegistered(id, modules || [], asyncify(callback))

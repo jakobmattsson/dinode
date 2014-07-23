@@ -14,7 +14,7 @@
   },
   "scripts": {
     "coverage": "npm run pretest && jscov --expand lib .cov && JSCOV=.cov mocha --compilers coffee:coffee-script/register --reporter mocha-term-cov-reporter --recursive",
-    "test": "mocha --compilers coffee:coffee-script/register --recursive --reporter list",
+    "test": "mocha --compilers coffee:coffee-script/register --recursive --reporter list --grep \"$TESTS\" --timeout 400",
     "prestart": "coffee -co lib src",
     "pretest": "coffee -co lib src",
     "prepublish": "coffee -co lib src"
