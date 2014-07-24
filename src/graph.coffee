@@ -1,4 +1,4 @@
-{contains, inherit} = require './util'
+{clone, contains, inherit} = require './util'
 
 findCycles = (graph, startNode) ->
 
@@ -29,6 +29,7 @@ exports.createGraph = ->
     getParents: (id) -> nodes[id].parents
     getChildren: (id) -> nodes[id].children
     getNodeData: (id) -> nodes[id].data
+    listNodeNames: -> Object.keys(nodes)
     addNode: (id, data, parents) ->
 
       if @hasNode(id)

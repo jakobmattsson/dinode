@@ -30,7 +30,7 @@ exports.construct = ({ lazy, onError }) ->
     definedAsEager: !name?
     eager: false
     resolver: once(asyncify(callback))
-    resolved: false # TODO:::: three states, not two
+    status: 'waiting'
 
   raiseErrorForUndefinedDependencies = (module) ->
     undefinedDeps = undefinedDependencies(module)
@@ -53,6 +53,7 @@ exports.construct = ({ lazy, onError }) ->
 
   setModuleToEager = (module) ->
     module.eager = true
+    module.status = 'ready'
     attemptResolve(module)
 
   areAllDepsResolved = (module) ->
@@ -67,6 +68,7 @@ exports.construct = ({ lazy, onError }) ->
     toObject(parents.map (name) -> [name, moduleGraph.getNodeData(name).value])
 
   resolveModule = (module) ->
+    module.status = 'resolving'
     module.resolver getResolvedDependencies(module), (err, value) ->
       if err?
         onModuleResolvedErroneously(module, err)
@@ -85,7 +87,7 @@ exports.construct = ({ lazy, onError }) ->
       onErr(new Error("Anonymous module failed during registration: " + message))
 
   onModuleResolvedSuccessfully = (module, value) ->
-    module.resolved = true
+    module.status = 'resolved'
     module.value = value
     moduleGraph.getChildren(module.name).forEach (childName) ->
       childModule = moduleGraph.getNodeData(childName)
@@ -103,10 +105,10 @@ exports.construct = ({ lazy, onError }) ->
     catch ex
       onErr(ex)
 
-  listModules: ->
-    throw new Error("not implemented")
-    # TODO
-    # - created (notResolved/resolutionStarted/resolved)
-    # - only named
-    # - also show all parents and children of each module
-    # - askedToResolve (or something like it.. the external version of "eager")
+  introspect: ->
+    toObject moduleGraph.listNodeNames().map (name) ->
+      hasNode = moduleGraph.hasNode(name)
+      status = if !hasNode then 'referred' else moduleGraph.getNodeData(name).status
+      dependencies = moduleGraph.getParents(name)
+      dependants = moduleGraph.getChildren(name)
+      [name, { status, dependants, dependencies }]
