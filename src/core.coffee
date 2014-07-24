@@ -28,9 +28,11 @@ exports.construct = ({ lazy, onError }) ->
     name: name || getGUID()
     unresolvedDeps: createSet().addAll(dependencies)
     definedAsEager: !name?
-    eager: false
     resolver: once(asyncify(callback))
     status: 'waiting'
+
+  isEager = (module) ->
+    module.status != 'waiting'
 
   raiseErrorForUndefinedDependencies = (module) ->
     undefinedDeps = undefinedDependencies(module)
@@ -42,17 +44,16 @@ exports.construct = ({ lazy, onError }) ->
 
   shouldModuleBeEager = (module) ->
     thisShouldBeEager = module.definedAsEager
-    anyChildIsEager = moduleGraph.anyChild(module.name, ((childName, childData) -> childData.eager))
+    anyChildIsEager = moduleGraph.anyChild(module.name, ((childName, childData) -> isEager(childData)))
     thisShouldBeEager || anyChildIsEager
 
   setModuleAndAncestorsToEager = (moduleName) ->
     node = moduleGraph.getNodeData(moduleName)
-    return if !node? || node.eager
+    return if !node? || isEager(node)
     setModuleToEager(node)
     moduleGraph.getParents(moduleName).forEach(setModuleAndAncestorsToEager)
 
   setModuleToEager = (module) ->
-    module.eager = true
     module.status = 'ready'
     attemptResolve(module)
 
@@ -60,7 +61,7 @@ exports.construct = ({ lazy, onError }) ->
     module.unresolvedDeps.isEmpty()
 
   attemptResolve = (module) ->
-    if module.eager && areAllDepsResolved(module)
+    if isEager(module) && areAllDepsResolved(module)
       resolveModule(module)
 
   getResolvedDependencies = (module) ->
