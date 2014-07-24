@@ -1,3 +1,5 @@
+{inherit} = require './util'
+
 SetBase = {
   isEmpty: ->
     @toList().length == 0
@@ -8,22 +10,19 @@ SetBase = {
     @
 }
 
-
-
 exports.createSet = ->
 
-  set = Object.create(SetBase)
   data = {}
 
-  set.add = (name) ->
-    data[name] = true
-    @
+  inherit(SetBase, {
+    add: (name) ->
+      data[name] = true
+      @
 
-  set.remove = (name) ->
-    delete data[name]
-    @
+    remove: (name) ->
+      delete data[name]
+      @
 
-  set.toList = ->
-    Object.keys(data)
-
-  set
+    toList: ->
+      Object.keys(data)
+  })
