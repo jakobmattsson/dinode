@@ -1,3 +1,9 @@
+exports.inherit = (type, obj) ->
+  newobj = Object.create(type)
+  for key, value of obj
+    newobj[key] = value
+  newobj
+
 exports.clone = (x) ->
   n = {}
   Object.keys(x).forEach (key) ->

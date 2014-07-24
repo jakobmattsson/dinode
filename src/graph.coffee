@@ -1,21 +1,8 @@
-{contains} = require './util'
+{contains, inherit} = require './util'
 
-GraphBase = {
-  anyChild: (id, proc) ->
-    @getChildren(id).some (name) =>
-      proc(name, @getNodeData(name))
-}
+findCycles = (graph, startNode) ->
 
-
-
-exports.createGraph = ->
-
-  childIndex = {}
-  parentIndex = {}
-  nodes = {}
-  graph = Object.create(GraphBase)
-
-  findCycles = (current, path, stop) ->
+  step = (current, path) ->
     if path.length > 1000
       throw new Error("Dependency tree too deep (more than 1000 ancestors)")
 
@@ -23,28 +10,40 @@ exports.createGraph = ->
       if contains(path, parent)
         depPath = path.concat([parent]).join(' <- ')
         throw new Error("Circular dependency found: #{depPath}")
-      findCycles(parent, path.concat([parent]), stop)
+      step(parent, path.concat([parent]))
 
+  step(startNode, [startNode])
 
-  graph.addNode = (id, data, parents) ->
+GraphBase = {
+  anyChild: (id, proc) ->
+    @getChildren(id).some (name) =>
+      proc(name, @getNodeData(name))
+}
 
-    if graph.hasNode(id)
-      throw new Error("Module '#{id}' defined twice")
+exports.createGraph = ->
 
-    nodes[id] = { data: data }
+  nodes = {}
 
-    parentIndex[id] = parents
-    parents.forEach (parent) ->
-      childIndex[parent] ?= []
-      childIndex[parent].push(id)
+  inherit(GraphBase, {
+    hasNode: (id) -> nodes[id]?.defined
+    getParents: (id) -> nodes[id].parents
+    getChildren: (id) -> nodes[id].children
+    getNodeData: (id) -> nodes[id].data
+    addNode: (id, data, parents) ->
 
-    findCycles(id, [id], id)
+      if @hasNode(id)
+        throw new Error("Module '#{id}' defined twice")
 
+      if !nodes[id]?
+        nodes[id] = { children: [] }
 
+      nodes[id].defined = true
+      nodes[id].parents = parents
+      nodes[id].data = data
 
-  graph.getParents = (id) -> parentIndex[id] || []
-  graph.getChildren = (id) -> childIndex[id] || []
-  graph.getNodeData = (id) -> nodes[id]?.data
-  graph.hasNode = (id) -> nodes[id]?
+      parents.forEach (parent) ->
+        nodes[parent] ?= { children: [], defined: false, parents: [] }
+        nodes[parent].children.push(id)
 
-  graph
+      findCycles(@, id)
+  })
