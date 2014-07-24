@@ -1,6 +1,5 @@
 util = require './util'
 
-# använd namnet (detta för att allt ska funka även efter minimifiering!!)
 parseDestructedArg = (line, argName) ->
   if line.trim() == ''
     throw new Error("Unexpected format: cant work with empty line")
@@ -28,15 +27,15 @@ figureOutDependencies = (func) ->
   signatureRegex = /^[ ]*function[ ]*\(([^,]*,)?([^,]*)?\)[ ]*{[ ]*$/
   signature = lines[0].match(signatureRegex)
   if !signature?
-    throw new Error("Invalid number of paraemters (more than 2); cannot figure out dependencies automatically")
+    throw new Error("Invalid number of parameters (more than 2); cannot figure out dependencies automatically")
 
   argNames = signature.slice(1).filter (x) -> x
 
   if argNames.length == 0
     []
   else if argNames.length == 1
-    # detta case är en gissning. kan vara så att det inskickade är en callback.
-    # men det är ganska ok, för då kommer denna funktion faila om man måste ange deps explicit
+    # this case is a guess. The passed in argument could be a callback
+    # but that's quite ok, sicne this function will fail if yo have to supply deps explicitly
     findDestructedArg(lines.slice(1), argNames[0])
   else if argNames.length == 2
     findDestructedArg(lines.slice(1), argNames[0])

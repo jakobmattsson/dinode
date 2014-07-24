@@ -6,12 +6,13 @@ exports.clone = (x) ->
 
 exports.once = (f) ->
   ran = false
-  (args...) ->
+  ->
     return if ran
     ran = true
-    f(args...)
+    f.apply(this, arguments)
 
-exports.setImm = (f) -> setTimeout(f, 1)
+exports.setImm = (f) ->
+  setTimeout(f, 1)
 
 exports.toObject = (pairs) ->
   obj = {}
