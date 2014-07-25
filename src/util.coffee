@@ -53,3 +53,10 @@ exports.getGUID = do ->
 exports.pairs = (obj) ->
   Object.keys(obj).map (key) ->
     [key, obj[key]]
+
+exports.occuranceCounter = (list) ->
+  list.reduce (acc, item) ->
+    acc[item] ?= 0
+    acc[item]++
+    acc
+  , {}

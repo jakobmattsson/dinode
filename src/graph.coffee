@@ -35,9 +35,7 @@ exports.createGraph = ->
       if @hasNode(id)
         throw new Error("Module '#{id}' defined twice")
 
-      if !nodes[id]?
-        nodes[id] = { children: [] }
-
+      nodes[id] ?= { children: [] }
       nodes[id].defined = true
       nodes[id].parents = parents
       nodes[id].data = data

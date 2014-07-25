@@ -1,4 +1,4 @@
-{once, setImm, toObject, asyncify, getGUID, pairs} = require './util'
+{once, setImm, toObject, asyncify, getGUID, pairs, occuranceCounter} = require './util'
 {createGraph} = require './graph'
 {createSet} = require './set'
 
@@ -24,11 +24,7 @@ exports.construct = ({ lazy, onError }) ->
     setModuleAndAncestorsToEager(newModule.name) if shouldModuleBeEager(newModule)
 
   reportErrorsForDuplicateDependencies = (name, dependencies) ->
-    counts = dependencies.reduce (acc, dep) ->
-      acc[dep] = acc[dep] || 0
-      acc[dep]++
-      acc
-    , {}
+    counts = occuranceCounter(dependencies)
     duplicates = pairs(counts).filter(([name, count]) -> count > 1).map ([name]) -> name
     if duplicates.length > 0
       moduleName = if name? then "'#{name}'" else "anonymous module"
