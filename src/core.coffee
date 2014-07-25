@@ -31,10 +31,16 @@ exports.construct = ({ lazy, onError }) ->
       message = "Direct dependencies of #{moduleName} named more than once: " + duplicates.join(', ')
       onErr(new Error(message))
 
+  isModuleResolved = (moduleName) ->
+    moduleGraph.getNodeData(moduleName)?.status == 'resolved'
+
+  isModuleUnresolved = (moduleName) ->
+    !isModuleResolved(moduleName)
+
   makeNewModuleNode = (name, dependencies, callback) ->
     externalName: name
     name: name || getGUID()
-    unresolvedDeps: createSet().addAll(dependencies)
+    unresolvedDeps: createSet().addAll(dependencies.filter(isModuleUnresolved))
     definedAsEager: !name?
     resolver: once(asyncify(callback))
     status: 'waiting'

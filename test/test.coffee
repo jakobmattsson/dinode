@@ -302,3 +302,13 @@ describe 'dinode', ->
         done()
     })
     @di.registerModule 'mymod', ['a', 'a', 'b', 'b', 'c'], ->
+
+  it 'works when naming a dependency that has already been resolved', (done) ->
+    counter = 2
+    callback = ->
+      counter--
+      done() if counter == 0
+
+    @di.registerModule 'a', [], ->
+    @di.registerModule(null, ['a'], callback)
+    @di.registerModule(null, ['a'], callback)

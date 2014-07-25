@@ -28,7 +28,7 @@ exports.createGraph = ->
     hasNode: (id) -> nodes[id]?.defined
     getParents: (id) -> nodes[id].parents
     getChildren: (id) -> nodes[id].children
-    getNodeData: (id) -> nodes[id].data
+    getNodeData: (id) -> nodes[id]?.data
     listNodeNames: -> Object.keys(nodes)
     addNode: (id, data, parents) ->
 
