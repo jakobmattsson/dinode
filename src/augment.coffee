@@ -5,8 +5,8 @@ exports.construct = (di, { onError, require }) ->
   di2 = util.clone(di)
 
   di2.registerVar = (id, value) ->
-    di.registerModule id, [], ({}, callback) ->
-      callback(null, value)
+    di.registerModule id, [], ->
+      value
 
   di2.registerVars = (objs) ->
     Object.keys(objs).forEach (name) ->
@@ -14,12 +14,12 @@ exports.construct = (di, { onError, require }) ->
 
   di2.registerRequire = (id, value) ->
     value = id if !value?
-    di.registerModule id, [], ({}, callback) ->
-      callback(null, require(value))
+    di.registerModule id, [], ->
+      require(value)
 
   di2.registerAlias = (id, aliased) ->
-    di.registerModule id, [aliased], (obj, callback) ->
-      callback(null, obj[aliased])
+    di.registerModule id, [aliased], (obj) ->
+      obj[aliased]
 
   di2.registerFile = (id, filename) ->
     file = require(filename)
