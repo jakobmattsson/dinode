@@ -284,3 +284,21 @@ describe 'dinode', ->
     @di.registerModule 'a', ['b'], ->
     @di.registerModule null, [], ->
     setTimeout(done, 20)
+
+  it 'gives an error when dependency names are repeated in anonymous modules', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Direct dependencies of anonymous module named more than once: a, b"
+        done()
+    })
+    @di.registerModule null, ['a', 'a', 'b', 'b', 'c'], ->
+
+  it 'gives an error when dependency names are repeated in named modules', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        expect(err).to.be.instanceof Error
+        expect(err.message).to.eql "Direct dependencies of 'mymod' named more than once: a, b"
+        done()
+    })
+    @di.registerModule 'mymod', ['a', 'a', 'b', 'b', 'c'], ->

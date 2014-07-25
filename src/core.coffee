@@ -1,4 +1,4 @@
-{once, setImm, toObject, asyncify, getGUID} = require './util'
+{once, setImm, toObject, asyncify, getGUID, pairs} = require './util'
 {createGraph} = require './graph'
 {createSet} = require './set'
 
@@ -18,9 +18,22 @@ exports.construct = ({ lazy, onError }) ->
   #
 
   newModuleRegistered = (name, dependencies, callback) ->
+    reportErrorsForDuplicateDependencies(name, dependencies)
     newModule = makeNewModuleNode(name, dependencies, callback)
     moduleGraph.addNode(newModule.name, newModule, dependencies)
     setModuleAndAncestorsToEager(newModule.name) if shouldModuleBeEager(newModule)
+
+  reportErrorsForDuplicateDependencies = (name, dependencies) ->
+    counts = dependencies.reduce (acc, dep) ->
+      acc[dep] = acc[dep] || 0
+      acc[dep]++
+      acc
+    , {}
+    duplicates = pairs(counts).filter(([name, count]) -> count > 1).map ([name]) -> name
+    if duplicates.length > 0
+      moduleName = if name? then "'#{name}'" else "anonymous module"
+      message = "Direct dependencies of #{moduleName} named more than once: " + duplicates.join(', ')
+      onErr(new Error(message))
 
   makeNewModuleNode = (name, dependencies, callback) ->
     externalName: name

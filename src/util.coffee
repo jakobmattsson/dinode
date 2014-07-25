@@ -49,3 +49,7 @@ exports.getGUID = do ->
   ->
     v++
     "____leaf#{v}"
+
+exports.pairs = (obj) ->
+  Object.keys(obj).map (key) ->
+    [key, obj[key]]
