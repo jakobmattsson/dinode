@@ -20,7 +20,6 @@ exports.construct = ({ lazy, onError }) ->
   newModuleRegistered = (name, dependencies, callback) ->
     newModule = makeNewModuleNode(name, dependencies, callback)
     moduleGraph.addNode(newModule.name, newModule, dependencies)
-    setImm(-> raiseErrorForUndefinedDependencies(newModule)) if !lazy
     setModuleAndAncestorsToEager(newModule.name) if shouldModuleBeEager(newModule)
 
   makeNewModuleNode = (name, dependencies, callback) ->
@@ -56,6 +55,7 @@ exports.construct = ({ lazy, onError }) ->
   setModuleToEager = (module) ->
     module.status = 'ready'
     attemptResolve(module)
+    setImm(-> raiseErrorForUndefinedDependencies(module)) if !lazy
 
   areAllDepsResolved = (module) ->
     module.unresolvedDeps.isEmpty()

@@ -279,3 +279,8 @@ describe 'dinode', ->
     [0..1010].forEach (e) =>
       @di.registerModule e.toString(), [(e+1).toString()], ->
     @di.registerModule null, ['0'], ->
+
+  it 'does not raise errors for undefined dependencies for unused modules', (done) ->
+    @di.registerModule 'a', ['b'], ->
+    @di.registerModule null, [], ->
+    setTimeout(done, 20)
