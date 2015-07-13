@@ -23,7 +23,7 @@
   "devDependencies": {
     "chai": "^3.0.0",
     "coffee-script": "1.9.3",
-    "jscov": "^0.6.14",
+    "jscov": "^0.6.15",
     "mocha": "^2.2.5",
     "mocha-term-cov-reporter": "^0.2.0"
   }
