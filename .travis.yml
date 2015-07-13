@@ -10,5 +10,6 @@ deploy:
   api_key:
     secure: "TzeIUEF33M3x2wLfiq1GVhA4exYyN2GZhxAQ8bBJXQO14sqLn7pHQlshBObR6GP9BVS2bIhaTF/h+Pyw1nk7uX3S3BjQrPePvsvYYaRXZUZg8SfgfYgbCNkXoFo6LPXnym/WDG6NJnYrH3yf6mSpFvYrZjse8GVSIpDE3xI3YmQ="
   on:
+    tags: true
     branch: master
     repo: jakobmattsson/dinode
