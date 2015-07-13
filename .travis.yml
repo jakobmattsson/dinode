@@ -8,7 +8,7 @@ deploy:
   email: jakob.mattsson@gmail.com
   skip_cleanup: true
   api_key:
-    secure: "tD3s6Imc0Dl6mrBvTZnEXn4S1IiZeSJbMxR2/ibGosSVatwAdDw6+Ko+7Gi35OLUskPWdzh5o3FkQCO660q61vrohBj8LsNvO8NyujcaW3EqnTPmvxggalMmp2qnsQIWwYrW6M+0EoG1c+drfJo75nuWqxiQmkdrWXBfrdgQR7I="
+    secure: "TzeIUEF33M3x2wLfiq1GVhA4exYyN2GZhxAQ8bBJXQO14sqLn7pHQlshBObR6GP9BVS2bIhaTF/h+Pyw1nk7uX3S3BjQrPePvsvYYaRXZUZg8SfgfYgbCNkXoFo6LPXnym/WDG6NJnYrH3yf6mSpFvYrZjse8GVSIpDE3xI3YmQ="
   on:
     branch: master
     repo: jakobmattsson/dinode
