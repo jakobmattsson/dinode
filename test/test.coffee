@@ -74,6 +74,19 @@ describe 'dinode', ->
     @di.registerModule null, [], ->
       throw new Error("what")
 
+  it 'catches errors raised during anonymous module resolutions, in named dependencies', (done) ->
+    @di = dinode.construct({
+      onError: (err) ->
+        try
+          expect(err).to.be.instanceof Error
+          expect(err.message).to.eql "Module 'something' failed during registration: fail!!1"
+          done()
+        catch ex
+          done(ex)
+    })
+    @di.registerModule 'something', [], -> throw new Error("fail!!1")
+    @di.registerModule null, ['something'], ->
+
   it 'catches errors throw as objects that are not Errors', (done) ->
     @di = dinode.construct({
       onError: (err) ->
@@ -210,7 +223,7 @@ describe 'dinode', ->
   it 'registerRequire loads a file using the builtin require-function if none is given explicitly', (done) ->
     @di.registerRequire('coffee-script')
     @di.run ['coffee-script'], (deps) ->
-      expect(deps['coffee-script'].VERSION).to.eql '1.7.1'
+      expect(deps['coffee-script'].VERSION).to.eql '1.9.3'
       done()
 
   it 'registerFile loads a file and uses the properties dependsOn and execute to define a module', (done) ->
