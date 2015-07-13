@@ -1,0 +1,13 @@
+language: node_js
+node_js:
+- '0.10'
+- '0.12'
+deploy:
+  provider: npm
+  email: jakob.mattsson@gmail.com
+  skip_cleanup: true
+  api_key:
+    secure: "tD3s6Imc0Dl6mrBvTZnEXn4S1IiZeSJbMxR2/ibGosSVatwAdDw6+Ko+7Gi35OLUskPWdzh5o3FkQCO660q61vrohBj8LsNvO8NyujcaW3EqnTPmvxggalMmp2qnsQIWwYrW6M+0EoG1c+drfJo75nuWqxiQmkdrWXBfrdgQR7I="
+  on:
+    branch: master
+    repo: jakobmattsson/dinode
